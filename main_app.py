@@ -1,4 +1,3 @@
-# main_app.py
 import streamlit as st
 from datetime import datetime
 from data import load_data, save_data
@@ -6,7 +5,7 @@ from challenges import get_daily_challenge, get_motivational_quote
 
 
 def main_app():
-    st.set_page_config(page_title="Daily Growth Challenge Tracker", page_icon="🌱")
+    st.set_page_config(page_title="Daily Growth Challenge Tracker", page_icon="")
     st.title("🌱 Daily Growth Challenge Tracker")
     st.write("Embrace a daily challenge to build a growth mindset!")
 
