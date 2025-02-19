@@ -46,7 +46,6 @@ def main_app():
             }
             data["entries"].append(new_entry)
             save_data(data)
-            st.session_state.reflection_input = ""
             st.success("Your reflection has been saved!")
 
     st.write("---")
