@@ -12,7 +12,7 @@ quotes = [
 
 def main():
     st.set_page_config(page_title="Growth Mindset Challenge")
-    st.title("Growth Mindset Challenge")
+    st.title("Growth Mindset Challenge no 1")
     st.write("Believe in your ability to grow and improve!")
 
     st.subheader("✨ Today's Motivational quote:")
