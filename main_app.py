@@ -3,20 +3,21 @@ from datetime import datetime
 import google.generativeai as genai
 import os
 from data import load_data, save_data
+from dotenv import load_dotenv
 from challenges import get_daily_challenge, get_motivational_quote
 
-# Configure the Gemini API with the environment variable
-GOOGLE_API_KEY = (
-    "AIzaSyAt9YcziHkvdo_PD6Uk6ti-aGPV4p-1M4A"  # Replace with your actual API key
-)
+# Load environment variables
+load_dotenv()
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 if not GOOGLE_API_KEY:
     st.error("GOOGLE_API_KEY environment variable not set.")
 else:
     genai.configure(api_key=GOOGLE_API_KEY)
+
+# Initialize Model
 model = genai.GenerativeModel("gemini-2.0-flash")
 
-
-# Define the system prompt
+# System Prompt (As before)
 SYSTEM_PROMPT = """
 You are the Growth Mindset Bot, a helpful and secure assistant for a website that helps users develop a growth mindset. 
 Here's what you need to know about the website:
@@ -89,50 +90,50 @@ Do not hallucinate or make up information. Stick to the website's purpose and th
 
 
 def get_gemini_response(prompt, chat_history):
-    """
-    Gets a response from the Gemini chatbot, taking chat history and system prompt into account.
-    """
-    # Format the chat history for Gemini
-    formatted_history = []
-    formatted_history.append({"role": "user", "parts": [SYSTEM_PROMPT]})
-    for message in chat_history:
-        role = "user" if message["role"] == "user" else "model"
-        formatted_history.append({"role": role, "parts": [message["content"]]})
+    """Gets a response from Gemini AI with chat history"""
+    try:
+        formatted_history = [{"role": "user", "parts": [SYSTEM_PROMPT]}]
+        for message in chat_history:
+            role = "user" if message["role"] == "user" else "model"
+            formatted_history.append({"role": role, "parts": [message["content"]]})
 
-    # Start a new chat with the formatted history
-    chat = model.start_chat(history=formatted_history)
-    response = chat.send_message(prompt)
-    return response.text
+        chat = model.start_chat(history=formatted_history)
+        response = chat.send_message(prompt)
+        return response.text
+    except Exception as e:
+        return f"Error: {str(e)}"
 
 
 def main_app():
-    st.set_page_config(page_title="Daily Growth Challenge Tracker", page_icon="")
+    st.set_page_config(page_title="Daily Growth Challenge Tracker")
     st.title("🌱 Daily Growth Challenge Tracker")
-    st.write("Embrace a daily challenge to build a growth mindset!")
 
-    # Initialize challenge and quote only once
+    # Initialize session state variables
+    if "username" not in st.session_state:
+        st.session_state.username = "Guest"
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = []
     if "challenge" not in st.session_state:
         st.session_state.challenge = get_daily_challenge()
     if "quote" not in st.session_state:
         st.session_state.quote = get_motivational_quote()
+
+    # Display Challenge
     st.subheader("Today's Challenge")
     st.info(st.session_state.challenge)
 
+    # Display Quote
     st.subheader("Motivational Quote")
     st.write(f'"{st.session_state.quote}"')
 
     # Reflection Form
-    st.subheader("Challenge Impact on you")
+    st.subheader("Challenge Impact on You")
     completed = st.checkbox("I have completed today's challenge")
-    reflection = st.text_area(
-        "What was the impact of the challenge on your experience today:",
-        height=150,
-        key="reflection_input",
-    )
+    reflection = st.text_area("What was the impact of the challenge?", height=150)
 
-    if st.button("Submit the impact"):
+    if st.button("Submit Reflection"):
         if not reflection.strip():
-            st.error("Please share valid description!")
+            st.error("Please enter a valid reflection!")
         else:
             data = load_data()
             new_entry = {
@@ -145,15 +146,15 @@ def main_app():
             }
             data["entries"].append(new_entry)
             save_data(data)
-            st.success("Your reflection has been saved!")
-            # add user impact
+            st.success("Reflection saved successfully!")
             st.session_state.chat_history.append(
                 {
                     "role": "assistant",
-                    "content": f"The impact of user {st.session_state.username} is {reflection.strip()}",
+                    "content": f"Reflection saved: {reflection.strip()}",
                 }
             )
 
+    # Past Reflections
     st.write("---")
     st.subheader("Your Past Reflections")
     data = load_data()
@@ -172,19 +173,11 @@ def main_app():
             st.markdown(f"**Timestamp:** {entry['timestamp']}")
             st.write("---")
     else:
-        st.info("No past reflections yet. Start your journey today!")
+        st.info("No past reflections yet. Start today!")
 
-    # Chatbot section
+    # Chatbot Section
     st.write("---")
     st.subheader("Chat with the Growth Mindset Bot")
-
-    if "chat_history" not in st.session_state:
-        st.session_state.chat_history = [
-            {
-                "role": "assistant",
-                "content": "Hello! I'm the Growth Mindset Bot. This website provides daily challenges designed to help you develop a growth mindset. After completing each challenge, you can reflect on its impact. Feel free to ask me anything about growth mindset or how to approach these challenges!",
-            }
-        ]
 
     for message in st.session_state.chat_history:
         with st.chat_message(message["role"]):
@@ -194,17 +187,13 @@ def main_app():
         st.session_state.chat_history.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
-
         with st.chat_message("assistant"):
-            message_placeholder = st.empty()
-            full_response = ""
-            try:
-                response = get_gemini_response(prompt, st.session_state.chat_history)
-                full_response = response
-                message_placeholder.markdown(full_response)
-            except Exception as e:
-                st.error(f"An error occurred: {e}")
+            response = get_gemini_response(prompt, st.session_state.chat_history)
+            st.markdown(response)
+            st.session_state.chat_history.append(
+                {"role": "assistant", "content": response}
+            )
 
-        st.session_state.chat_history.append(
-            {"role": "assistant", "content": full_response}
-        )
+
+if __name__ == "__main__":
+    main_app()
